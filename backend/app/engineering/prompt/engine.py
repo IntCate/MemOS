@@ -116,7 +116,7 @@ class PromptEngine:
         if chat_history:
             messages.extend(chat_history)
         
-        context_messages = self._build_context_messages(**kwargs)
+        context_messages = self._build_context_messages(query=query, **kwargs)
         messages.extend(context_messages)
         
         user_template = self.template_engine.get_template("user_chat")
@@ -130,8 +130,16 @@ class PromptEngine:
         
         return messages
     
-    def _build_context_messages(self, **kwargs) -> List[Dict[str, str]]:
+    def _build_context_messages(self, query: str = '', **kwargs) -> List[Dict[str, str]]:
         context_messages = []
+        
+        # ── Level 0: 相似度筛选后的技能摘要 ──
+        skill_ctx = self._build_skill_context(query)
+        if skill_ctx:
+            context_messages.append({
+                'role': 'user',
+                'content': skill_ctx,
+            })
         
         rag_context = kwargs.get('context') or kwargs.get('rag_context')
         if rag_context:
@@ -148,3 +156,30 @@ class PromptEngine:
             })
         
         return context_messages
+    
+    def _build_skill_context(self, query: str) -> str:
+        """Level 0 渐进式披露：根据查询语义选择最相关的技能，仅注入摘要
+        
+        Returns:
+            格式化的技能摘要文本，或空字符串
+        """
+        if not query:
+            return ''
+        
+        try:
+            from app.capabilities.skill.skill_selector import get_skill_selector
+            selector = get_skill_selector()
+            selected = selector.get_selected_skills_context(query)
+            
+            if not selected:
+                return ''
+            
+            lines = ['【可用技能】以下技能可能对当前任务有帮助：']
+            for i, s in enumerate(selected, 1):
+                lines.append(
+                    f"{i}. **{s['name']}** [{s.get('category', 'general')}] "
+                    f"— {s['description']}"
+                )
+            return '\n'.join(lines)
+        except Exception:
+            return ''

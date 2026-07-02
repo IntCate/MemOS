@@ -40,6 +40,7 @@ class FileBasedSkill(Skill):
         self._parameters = skill_config.get('parameters', [])
         self._enabled = skill_config.get('enabled', True)
         self._instructions = skill_config.get('instructions', '')
+        self._usage_examples = skill_config.get('usage_examples', [])
 
     def get_name(self) -> str:
         return self._name
@@ -62,6 +63,10 @@ class FileBasedSkill(Skill):
     def get_instructions(self) -> str:
         """获取 SKILL.md 中的指令内容"""
         return self._instructions
+
+    def get_usage_examples(self) -> List[str]:
+        """获取 SKILL.md frontmatter 中定义的使用示例"""
+        return self._usage_examples
 
     def get_references(self) -> Dict[str, str]:
         """读取 references/ 目录下的所有 .md 参考文档"""
@@ -139,4 +144,5 @@ def parse_skill_md(file_path: str) -> Dict[str, Any]:
         'parameters': frontmatter.get('parameters', []),
         'enabled': frontmatter.get('enabled', True),
         'instructions': body,
+        'usage_examples': frontmatter.get('usage_examples', []),
     }

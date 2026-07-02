@@ -16,9 +16,9 @@ async def setup():
     load_data()
     logger.info("应用数据加载完成")
 
-    # 启动 Skill 目录热更新监听
-    from app.capabilities import start_skill_watcher
-    await start_skill_watcher(interval=5.0)
+    # 启动 Skill 目录即时热加载（watchdog，即改即生效）
+    from app.capabilities import start_skill_hotreload
+    await start_skill_hotreload(debounce_seconds=0.3)
 
 # 使用FastAPI的 lifespan event handlers 替代 deprecated 的 on_event
 @asynccontextmanager
@@ -37,8 +37,8 @@ async def lifespan(app):
     
     # 关闭时的清理操作（如果需要）
     logger.info("应用关闭，开始清理资源")
-    from app.capabilities import stop_skill_watcher
-    await stop_skill_watcher()
+    from app.capabilities import stop_skill_hotreload
+    await stop_skill_hotreload()
 
 # 创建应用实例，传入 lifespan
 app = create_app(lifespan=lifespan)
