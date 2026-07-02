@@ -12,14 +12,15 @@ class RegularExecutor:
         self.model_manager = ModelManager()
     
     async def execute(self, messages: List[Dict[str, str]], model_name: str, 
-                      model_params: Dict[str, Any]) -> Dict[str, Any]:
+                      model_params: Dict[str, Any], model_config: Dict[str, Any] = None, 
+                      version_config: Dict[str, Any] = None) -> Dict[str, Any]:
         """执行非流式调用"""
         logger.debug(f"[RegularExecutor] 执行非流式调用: {model_name}")
         
         response = await self.model_manager.chat(
             model_name,
-            {},
-            {},
+            model_config or {},
+            version_config or {},
             messages,
             model_params
         )
@@ -38,16 +39,19 @@ class StreamingExecutor:
         self.model_manager = ModelManager()
     
     async def execute(self, messages: List[Dict[str, str]], model_name: str, 
-                      model_params: Dict[str, Any]) -> AsyncGenerator[str, None]:
+                      model_params: Dict[str, Any], model_config: Dict[str, Any] = None, 
+                      version_config: Dict[str, Any] = None) -> AsyncGenerator[str, None]:
         """执行流式调用"""
         logger.debug(f"[StreamingExecutor] 执行流式调用: {model_name}")
         
-        async for chunk in self.model_manager.stream_chat(
+        model_params_with_stream = {**model_params, 'stream': True}
+        
+        async for chunk in self.model_manager.chat(
             model_name,
-            {},
-            {},
+            model_config or {},
+            version_config or {},
             messages,
-            model_params
+            model_params_with_stream
         ):
             yield chunk
 

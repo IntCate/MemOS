@@ -17,10 +17,14 @@ class InferenceEngine:
     
     @async_handle_errors(default_return=InferenceResult(success=False, error="调用失败"))
     async def chat(self, messages: List[Dict[str, str]], model_name: str, 
-                   model_params: Dict[str, Any] = None) -> InferenceResult:
+                   model_params: Dict[str, Any] = None, model_config: Dict[str, Any] = None,
+                   version_config: Dict[str, Any] = None) -> InferenceResult:
         """非流式调用"""
         logger.info(f"[InferenceEngine] 开始非流式调用，模型: {model_name}")
-        result = await self.regular_executor.execute(messages, model_name, model_params or {})
+        result = await self.regular_executor.execute(
+            messages, model_name, model_params or {}, 
+            model_config or {}, version_config or {}
+        )
         return InferenceResult(
             success=True,
             content=result.get('content', ''),
@@ -29,11 +33,15 @@ class InferenceEngine:
         )
     
     async def chat_streaming(self, messages: List[Dict[str, str]], model_name: str, 
-                             model_params: Dict[str, Any] = None) -> AsyncGenerator[str, None]:
+                             model_params: Dict[str, Any] = None, model_config: Dict[str, Any] = None,
+                             version_config: Dict[str, Any] = None) -> AsyncGenerator[str, None]:
         """流式调用"""
         logger.info(f"[InferenceEngine] 开始流式调用，模型: {model_name}")
         try:
-            async for chunk in self.streaming_executor.execute(messages, model_name, model_params or {}):
+            async for chunk in self.streaming_executor.execute(
+                messages, model_name, model_params or {},
+                model_config or {}, version_config or {}
+            ):
                 yield chunk
         except Exception as e:
             logger.error(f"[InferenceEngine] 流式调用失败: {str(e)}")

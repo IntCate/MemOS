@@ -47,7 +47,9 @@ class HarnessEngine:
             inference_result = await self.inference_engine.chat(
                 messages=model_messages,
                 model_name=decision.selected_model,
-                model_params=decision.model_params
+                model_params=decision.model_params,
+                model_config=model_config,
+                version_config=model_config.get('version_config', {})
             )
             
             await self._store_memory(message, inference_result)
@@ -92,7 +94,9 @@ class HarnessEngine:
             async for chunk in self.inference_engine.chat_streaming(
                 messages=model_messages,
                 model_name=decision.selected_model,
-                model_params=decision.model_params
+                model_params=decision.model_params,
+                model_config=model_config,
+                version_config=model_config.get('version_config', {})
             ):
                 chunks.append(chunk)
                 yield chunk

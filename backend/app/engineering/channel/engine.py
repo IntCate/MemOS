@@ -95,9 +95,9 @@ class ChannelEngine:
         
         try:
             for msg in messages:
-                await self.harness_engine.memory_engine.remember_working(
+                await self.harness_engine.memory_manager.add_working_memory(
                     content=msg.get('content', ''),
-                    chat_id=chat_id,
+                    session_id=chat_id,
                     user_id=msg.get('user_id', ''),
                     role=msg.get('role', 'user'),
                     metadata={
@@ -116,7 +116,7 @@ class ChannelEngine:
         logger.info(f"[ChannelEngine] 清除对话工作区记忆: chat_id={chat_id}")
         
         try:
-            return await self.harness_engine.memory_engine.forget_working_by_chat(chat_id)
+            return await self.harness_engine.memory_manager.delete_session(chat_id)
         except Exception as e:
             logger.error(f"[ChannelEngine] 清除对话工作区记忆失败: {e}")
             return False
