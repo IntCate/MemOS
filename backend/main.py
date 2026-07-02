@@ -12,10 +12,13 @@ from app.core.logger import logger
 
 async def setup():
     """应用初始化"""
-    
     # 加载初始数据（会自动初始化数据库）
     load_data()
     logger.info("应用数据加载完成")
+
+    # 启动 Skill 目录热更新监听
+    from app.capabilities import start_skill_watcher
+    await start_skill_watcher(interval=5.0)
 
 # 使用FastAPI的 lifespan event handlers 替代 deprecated 的 on_event
 @asynccontextmanager
@@ -34,6 +37,8 @@ async def lifespan(app):
     
     # 关闭时的清理操作（如果需要）
     logger.info("应用关闭，开始清理资源")
+    from app.capabilities import stop_skill_watcher
+    await stop_skill_watcher()
 
 # 创建应用实例，传入 lifespan
 app = create_app(lifespan=lifespan)

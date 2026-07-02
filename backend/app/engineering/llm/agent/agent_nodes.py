@@ -1,22 +1,45 @@
 import asyncio
 import json
 import re
-from typing import Dict, Any, List, Literal
+from dataclasses import dataclass, field
+from typing import Dict, Any, List, Literal, Optional
+from datetime import datetime
 from langchain_core.messages import (
     SystemMessage, ToolMessage, AIMessage
 )
 
 from app.engineering.llm.agent.agent_state import AgentState
-from app.engineering.tool import ToolEngine, ToolCall
 from app.core.logger import logger
+
+
+@dataclass
+class ToolCall:
+    """工具调用请求"""
+    tool_name: str
+    arguments: Dict[str, Any] = field(default_factory=dict)
+    call_id: str = field(default_factory=lambda: str(hash(datetime.now())))
+    timestamp: datetime = field(default_factory=datetime.now)
+    context: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ToolResult:
+    """工具执行结果"""
+    call_id: str
+    success: bool
+    content: str
+    tool_name: Optional[str] = None
+    error: Optional[str] = None
+    raw_result: Any = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
 
 
 class AgentNodes:
     """智能体节点逻辑集合：支持线性/非线性自动分流"""
     
-    def __init__(self, llm_with_tools, tool_engine: ToolEngine):
+    def __init__(self, llm_with_tools):
         self.llm_with_tools = llm_with_tools
-        self.tool_engine = tool_engine
 
     async def reasoning_node(self, state: AgentState) -> Dict[str, Any]:
         """核心推理节点：决定行动方案"""
@@ -58,7 +81,7 @@ class AgentNodes:
             tc['args'] = injected_args
             
             tool_call = ToolCall(tool_name=tc['name'], arguments=tc['args'], call_id=tc.get('id', f"call_{i}"))
-            result = await self.tool_engine.execute(tool_call)
+            result = await self._execute_tool(tool_call)
             
             result_msg = ToolMessage(content=result.content, tool_call_id=tc.get('id'))
             result_msg.tool_index = i
@@ -82,7 +105,7 @@ class AgentNodes:
         
         async def _run_single_tool(tc, tool_index):
             tool_call = ToolCall(tool_name=tc['name'], arguments=tc.get('args', {}), call_id=tc.get('id', f"call_{tool_index}"))
-            result = await self.tool_engine.execute(tool_call)
+            result = await self._execute_tool(tool_call)
             result_msg = ToolMessage(content=result.content, tool_call_id=tc.get('id'))
             result_msg.tool_index = tool_index
             return result_msg
@@ -98,6 +121,21 @@ class AgentNodes:
             "messages": results,
             "loop_count": state["loop_count"] + 1
         }
+
+    async def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
+        """执行工具调用
+        
+        当前已移除 ToolEngine，由 capabilities 层接管工具执行。
+        后续可通过 MCPCapability 或 SkillManager 实现具体工具执行逻辑。
+        """
+        logger.warning(f"[Agent] 工具执行未实现: {tool_call.tool_name}")
+        return ToolResult(
+            call_id=tool_call.call_id,
+            success=False,
+            content="",
+            error=f"工具执行功能已迁移至 capabilities 层，{tool_call.tool_name} 暂不可用",
+            tool_name=tool_call.tool_name
+        )
 
     def _inject_variables(self, args: Dict, context: Dict) -> Dict:
         """将参数中的占位符 {{tool_N}} 替换为 context 中的实际值"""

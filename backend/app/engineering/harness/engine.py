@@ -1,22 +1,18 @@
 """Harness引擎 - Agent的控制中心"""
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List, Optional, AsyncGenerator
+from typing import Dict, Any, List, AsyncGenerator
 
 from app.core.logger import logger
-from app.core.service_container import service_container
-from app.utils.model import ModelUtils
-from app.utils import ValidationUtils
 from app.memory import MemoryManager, MemoryType, get_memory_manager
 from app.knowledgebase import KnowledgeBaseManager, get_knowledge_base_manager
 from ..data_structures import (
-    Message, Decision, Response, ChannelType
+    Message, Decision, Response
 )
 from ..prompt.engine import PromptEngine
 from ..inference.engine import InferenceEngine
 from ..context.engine import ContextEngine
 from ..context.data_structures import Context
-from ..tool.engine import ToolEngine
 
 
 class HarnessEngine:
@@ -29,7 +25,6 @@ class HarnessEngine:
         self.memory_manager: MemoryManager = get_memory_manager(self.config.get('memory', {}))
         self.knowledge_base_manager: KnowledgeBaseManager = get_knowledge_base_manager(self.config.get('knowledge_base', {}))
         self.context_engine = ContextEngine(self.config.get('context', {}))
-        self.tool_engine = ToolEngine(self.config.get('tool', {}))
     
     async def process(self, message: Message) -> Response:
         """处理消息的统一入口"""
@@ -47,7 +42,7 @@ class HarnessEngine:
             
             context = await self.context_engine.enhance_context(context)
             
-            model_messages = await self._prepare_model_input(message, decision, context, chat_context)
+            model_messages = await self._prepare_model_input(message, context, chat_context)
             
             inference_result = await self.inference_engine.chat(
                 messages=model_messages,
@@ -55,7 +50,7 @@ class HarnessEngine:
                 model_params=decision.model_params
             )
             
-            await self._store_memory(message, inference_result, decision)
+            await self._store_memory(message, inference_result)
             
             await self._sync_working_memory(message, inference_result)
             
@@ -89,16 +84,29 @@ class HarnessEngine:
             
             context = await self.context_engine.enhance_context(context)
             
-            model_messages = await self._prepare_model_input(message, decision, context, chat_context)
+            model_messages = await self._prepare_model_input(message, context, chat_context)
             
             decision.use_streaming = True
             
+            chunks: List[str] = []
             async for chunk in self.inference_engine.chat_streaming(
                 messages=model_messages,
                 model_name=decision.selected_model,
                 model_params=decision.model_params
             ):
+                chunks.append(chunk)
                 yield chunk
+
+            # 流式完成后持久化记忆（与非流式 process() 行为一致）
+            import types
+            result = types.SimpleNamespace(
+                content="".join(chunks),
+                success=True,
+                error="",
+                model_name=decision.selected_model
+            )
+            await self._store_memory(message, result)
+            await self._sync_working_memory(message, result)
             
         except Exception as e:
             logger.error(f"[HarnessEngine] 流式处理失败: {str(e)}", exc_info=True)
@@ -129,7 +137,7 @@ class HarnessEngine:
             'title': message.content[:30] if message.content else "新对话"
         }
     
-    async def _prepare_model_input(self, message: Message, decision: Decision, 
+    async def _prepare_model_input(self, message: Message, 
                                   context: Context, chat_context: Dict[str, Any]) -> List[Dict[str, str]]:
         """准备模型输入"""
         chat_history = chat_context.get('messages', [])
@@ -150,7 +158,7 @@ class HarnessEngine:
         
         return self.prompt_engine.build_messages(message.content, **render_kwargs)
     
-    async def _store_memory(self, message: Message, result, decision: Decision):
+    async def _store_memory(self, message: Message, result):
         """存储长期记忆"""
         try:
             await self.memory_manager.add_memory(

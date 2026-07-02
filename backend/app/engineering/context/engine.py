@@ -1,7 +1,7 @@
 """Context引擎 - 上下文系统的统一入口"""
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from app.core.logger import logger
 from app.memory import MemoryManager, MemoryType, get_memory_manager
@@ -100,7 +100,7 @@ class InMemoryContextManager:
     def __init__(self):
         self.contexts: Dict[str, Context] = {}
     
-    async def get_context(self, chat_id: str, user_id: str) -> Optional[Context]:
+    async def get_context(self, chat_id: str, user_id: str = "") -> Optional[Context]:
         """获取上下文"""
         return self.contexts.get(chat_id)
     
@@ -157,7 +157,7 @@ class DefaultContextEnhancer:
                 if memory_context.entries:
                     context.memory_context = self._format_memory_results(memory_context.entries)
             except Exception as e:
-                logger.warning(f"上下文增强 - 记忆检索失败: {e}")
+                logger.warning(f"上下文增强 - 记忆检索失败: {e}", exc_info=True)
         
         if self.knowledge_base_manager and metadata.get('rag_enabled', False):
             try:
@@ -172,7 +172,7 @@ class DefaultContextEnhancer:
                 if search_results:
                     context.rag_context = self._format_rag_results(search_results)
             except Exception as e:
-                logger.warning(f"上下文增强 - 知识库检索失败: {e}")
+                logger.warning(f"上下文增强 - 知识库检索失败: {e}", exc_info=True)
         
         if self.web_search_service and metadata.get('web_search_enabled', False):
             try:
@@ -180,7 +180,7 @@ class DefaultContextEnhancer:
                 if search_result:
                     context.web_search_context = self._format_web_search_results(search_result)
             except Exception as e:
-                logger.warning(f"上下文增强 - 网络搜索失败: {e}")
+                logger.warning(f"上下文增强 - 网络搜索失败: {e}", exc_info=True)
         
         return context
     

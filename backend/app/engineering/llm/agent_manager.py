@@ -1,10 +1,8 @@
-from typing import Dict, Any, List, Optional, AsyncIterator
+from typing import Dict, Any, List, AsyncIterator
 
 from app.engineering.llm.base.base_model import BaseModel
 from app.engineering.llm.agent.agent_state import AgentState
 from app.engineering.llm.agent.agent_nodes import AgentNodes
-from app.engineering.tool import ToolEngine, Tool
-from app.core.service_container import service_container
 from app.core.logger import logger
 
 
@@ -20,62 +18,25 @@ class AgentManager:
         """
         self.base_model = base_model
         self.llm = base_model.llm
-        self.llm_with_tools = None
+        self.llm_with_tools = self.llm
         self.graph = None
         self.is_initialized = False
-        self.tool_engine = service_container.get_service('tool_engine')
         self.agent_nodes = None
     
-    async def initialize(self, mcp_config: Optional[Dict] = None):
+    async def initialize(self):
         """
         初始化智能体
         
-        Args:
-            mcp_config: MCP 配置
+        工具绑定功能已迁移至 capabilities 层，后续可通过 MCPCapability 提供工具绑定。
         """
         if self.is_initialized:
             return
         
-        await self.tool_engine.initialize()
-        tools = await self.tool_engine.list_tools()
-        
-        langchain_tools = [self._convert_to_langchain_tool(t) for t in tools]
-        
-        self.llm_with_tools = self.llm.bind_tools(langchain_tools) if langchain_tools else self.llm
-        
-        self.agent_nodes = AgentNodes(self.llm_with_tools, self.tool_engine)
+        # 工具绑定功能已迁移至 capabilities 层
+        self.agent_nodes = AgentNodes(self.llm_with_tools)
         
         self.graph = self._build_graph()
         self.is_initialized = True
-    
-    def _convert_to_langchain_tool(self, tool: Tool):
-        """将Tool对象转换为LangChain工具"""
-        from langchain_core.tools import StructuredTool
-        from langchain_core.pydantic_v1 import BaseModel, Field
-        
-        params = tool.parameters
-        if params:
-            class ToolArgs(BaseModel):
-                pass
-            
-            for param_name, param_spec in params.items():
-                field_desc = param_spec.get('description', '')
-                field_type = param_spec.get('type', 'string')
-                python_type = str if field_type == 'string' else float if field_type == 'number' else bool if field_type == 'boolean' else str
-                setattr(ToolArgs, param_name, Field(description=field_desc))
-            
-            return StructuredTool.from_function(
-                func=lambda **kwargs: "",
-                name=tool.name,
-                description=tool.description,
-                args_schema=ToolArgs
-            )
-        
-        return StructuredTool.from_function(
-            func=lambda **kwargs: "",
-            name=tool.name,
-            description=tool.description
-        )
     
     def _build_graph(self):
         """
@@ -113,12 +74,8 @@ class AgentManager:
             model_params: 模型参数字典
         """
         call_kwargs = self.base_model._prepare_call_kwargs(model_params)
-        
-        tools = asyncio.run(self.tool_engine.list_tools())
-        langchain_tools = [self._convert_to_langchain_tool(t) for t in tools]
-        self.llm_with_tools = self.llm.bind_tools(langchain_tools, **call_kwargs) if langchain_tools else self.llm
-        
-        self.agent_nodes = AgentNodes(self.llm_with_tools, self.tool_engine)
+        self.llm_with_tools = self.llm.bind_tools([], **call_kwargs)
+        self.agent_nodes = AgentNodes(self.llm_with_tools)
         self.graph = self._build_graph()
 
     async def chat_stream(

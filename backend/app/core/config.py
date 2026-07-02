@@ -62,33 +62,20 @@ class ConfigManager:
     
     def load_config(self):
         """加载配置"""
-        # 首先使用默认配置
         self._config = DEFAULT_CONFIG.copy()
+        self._ensure_directories()
         
-        # 获取用户数据目录
+    def _ensure_directories(self):
+        """确保应用所需的目录结构存在，与配置加载解耦"""
         user_data_dir = self.get_user_data_dir()
-        
-        # 不自动设置默认向量数据库路径，由用户显式配置
-        
-        # 创建config子目录
-        config_dir = os.path.join(user_data_dir, 'config')
-        os.makedirs(config_dir, exist_ok=True)
-        
-        # 创建标准的embedding模型目录 - 确保无论RAG是否启用都会创建
-        embedding_models_dir = os.path.join(user_data_dir, 'models', 'embedding')
-        os.makedirs(embedding_models_dir, exist_ok=True)
-        
-        # 创建RAG相关目录
-        rag_dir = os.path.join(user_data_dir, 'Retrieval-Augmented Generation')
-        os.makedirs(rag_dir, exist_ok=True)
-        
-        # 创建RAG文件数据目录
-        rag_files_dir = os.path.join(rag_dir, 'files')
-        os.makedirs(rag_files_dir, exist_ok=True)
-        
-        # 创建RAG向量数据库目录
-        rag_vector_db_dir = os.path.join(rag_dir, 'vector_db')
-        os.makedirs(rag_vector_db_dir, exist_ok=True)
+        directories = [
+            os.path.join(user_data_dir, 'config'),
+            os.path.join(user_data_dir, 'models', 'embedding'),
+            os.path.join(user_data_dir, 'Retrieval-Augmented Generation', 'files'),
+            os.path.join(user_data_dir, 'Retrieval-Augmented Generation', 'vector_db'),
+        ]
+        for d in directories:
+            os.makedirs(d, exist_ok=True)
         
     def get_user_data_dir(self):
         """获取用户数据目录"""

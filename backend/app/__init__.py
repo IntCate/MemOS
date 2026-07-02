@@ -68,18 +68,12 @@ def register_services():
     from app.engineering.inference.engine import InferenceEngine
     from app.engineering.prompt.engine import PromptEngine
     from app.engineering.context.engine import ContextEngine
-    from app.engineering.tool.engine import ToolEngine
     from app.engineering.channel.engine import ChannelEngine
-    from app.memory import get_memory_manager
-    from app.knowledgebase import get_knowledge_base_manager
     
     service_container.register_service('harness_engine', HarnessEngine)
     service_container.register_service('inference_engine', InferenceEngine)
     service_container.register_service('prompt_engine', PromptEngine)
-    service_container.register_service('memory_manager', get_memory_manager)
-    service_container.register_service('knowledge_base_manager', get_knowledge_base_manager)
     service_container.register_service('context_engine', ContextEngine)
-    service_container.register_service('tool_engine', ToolEngine)
     service_container.register_service('channel_engine', ChannelEngine)
 
 def create_app(lifespan=None):

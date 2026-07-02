@@ -3,12 +3,13 @@
 这是一个独立的能力服务，提供 MCP 客户端管理和工具调用能力。
 MCP 配置使用 YAML 文件存储，便于编辑和版本控制。
 """
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 import os
 import json
 import yaml
 from app.core.instance_manager import InstanceManager
 from app.utils.path_manager import PathManager
+from app.core.logger import logger
 
 
 class MCPCapability:
@@ -69,6 +70,7 @@ class MCPCapability:
         except ImportError:
             return []
         except Exception as e:
+            logger.error(f"[MCPCapability] 获取工具列表失败 server={server_name}: {e}", exc_info=True)
             return []
     
     async def execute_tool(self, server_name: str, mcp_config: Dict, tool_name: str, **kwargs) -> Any:
@@ -94,6 +96,7 @@ class MCPCapability:
         except ImportError:
             return None
         except Exception as e:
+            logger.error(f"[MCPCapability] 执行工具失败 server={server_name} tool={tool_name}: {e}", exc_info=True)
             return None
     
     def get_default_config(self) -> Dict:
@@ -119,7 +122,8 @@ class MCPCapability:
                 with open(self._config_path, 'r', encoding='utf-8') as f:
                     return yaml.safe_load(f)
             return self.get_default_config()
-        except Exception:
+        except Exception as e:
+            logger.error(f"[MCPCapability] 读取MCP配置失败: {e}", exc_info=True)
             return self.get_default_config()
     
     def save_mcp_config(self, config: Dict) -> bool:
@@ -128,5 +132,6 @@ class MCPCapability:
             with open(self._config_path, 'w', encoding='utf-8') as f:
                 yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"[MCPCapability] 保存MCP配置失败: {e}", exc_info=True)
             return False
