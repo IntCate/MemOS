@@ -90,7 +90,6 @@ def insert_default_embedding_models():
                 'type': provider['type'],
                 'configured': False,
                 'icon_url': f"/api/models/icons/{provider['name']}.svg",
-                'icon_blob': _load_icon_blob(provider.get('icon_name')),
             }
 
             model_obj = embedding_model_repo.create_model(model_data)

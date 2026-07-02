@@ -34,7 +34,7 @@ class HarnessEngine:
             context = await self.context_engine.get_or_create_context(message)
             
             decision = Decision(use_streaming=False)
-            model_config = context.to_dict().get('model_config', {})
+            model_config = message.metadata or {}
             decision.selected_model = model_config.get('model_name', '')
             decision.model_params = model_config.get('model_params', {})
             
@@ -77,8 +77,8 @@ class HarnessEngine:
         try:
             context = await self.context_engine.get_or_create_context(message)
             
-            decision = Decision(use_streaming=False)
-            model_config = context.to_dict().get('model_config', {})
+            decision = Decision(use_streaming=True)
+            model_config = message.metadata or {}
             decision.selected_model = model_config.get('model_name', '')
             decision.model_params = model_config.get('model_params', {})
             
@@ -87,8 +87,6 @@ class HarnessEngine:
             context = await self.context_engine.enhance_context(context)
             
             model_messages = await self._prepare_model_input(message, context, chat_context)
-            
-            decision.use_streaming = True
             
             chunks: List[str] = []
             async for chunk in self.inference_engine.chat_streaming(
@@ -151,16 +149,13 @@ class HarnessEngine:
             'chat_history': chat_history
         }
         
-        if context.memory_context:
-            render_kwargs['memory_context'] = context.memory_context
-        
         if context.rag_context:
             render_kwargs['context'] = context.rag_context
         
         if context.web_search_context:
             render_kwargs['search_results'] = context.web_search_context
         
-        return self.prompt_engine.build_messages(message.content, **render_kwargs)
+        return self.prompt_engine.build_messages(**render_kwargs)
     
     async def _store_memory(self, message: Message, result):
         """存储长期记忆"""

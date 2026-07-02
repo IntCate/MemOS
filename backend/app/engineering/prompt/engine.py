@@ -112,13 +112,6 @@ class PromptEngine:
                     'content': system_result.content
                 })
         
-        memory_context = kwargs.get('memory_context')
-        if memory_context:
-            messages.append({
-                'role': 'user',
-                'content': f"【历史记忆】\n{memory_context}"
-            })
-        
         chat_history = kwargs.get('chat_history', [])
         if chat_history:
             messages.extend(chat_history)
