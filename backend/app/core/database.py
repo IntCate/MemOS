@@ -10,7 +10,7 @@ import os
 def get_db_path():
     """获取SQLite数据库文件路径"""
     user_data_dir = config_manager.get_user_data_dir()
-    return os.path.join(user_data_dir, 'config', 'chato.db')
+    return os.path.join(user_data_dir, 'config', 'memos.db')
 
 # 创建SQLAlchemy引擎
 DATABASE_URL = f"sqlite:///{get_db_path()}"

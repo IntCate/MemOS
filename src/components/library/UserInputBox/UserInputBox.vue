@@ -432,7 +432,7 @@
         <div class="p-3 pt-4 pb-1 relative">
           <textarea
             v-model="messageInput"
-            placeholder="Message Or UploadFile For Chato..."
+            placeholder="Message Or UploadFile For MemOS..."
             class="w-full resize-none border-none focus:ring-0 focus:outline-none text-base leading-relaxed placeholder-gray-400 dark:text-white dark:placeholder-gray-500 bg-transparent transition-all duration-300 ease-in-out"
             rows="2"
             @keydown.enter.exact.prevent="handleSendMessage"

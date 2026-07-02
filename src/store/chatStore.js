@@ -1114,7 +1114,7 @@ export const useChatStore = defineStore('chat', {
             // 确保content字段存在
             content: messageData.content || '',
             // 确保model字段存在，使用正确的默认值，避免硬编码GPT4
-            model: messageData.model || chat.model || settingsStore.systemSettings.defaultModel || 'Chato',
+            model: messageData.model || chat.model || settingsStore.systemSettings.defaultModel || 'MemOS',
             // 确保files字段存在（默认为空数组）
             files: Array.isArray(messageData.files) ? messageData.files : [],
             // 确保智能体相关字段存在
@@ -1133,7 +1133,7 @@ export const useChatStore = defineStore('chat', {
           messages: processedMessages,
           createdAt: chat.createdAt || Date.now(),
           updatedAt: chat.updatedAt || Date.now(),
-          model: chat.model || settingsStore.systemSettings.defaultModel || 'Chato',
+          model: chat.model || settingsStore.systemSettings.defaultModel || 'MemOS',
           pinned: chat.pinned || false,
           metadata: chat.metadata || {},
         };

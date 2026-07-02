@@ -2,7 +2,7 @@
   <div v-if="visible" class="command-line-overlay">
     <div class="command-line-container">
       <div class="command-line-header">
-        <div class="command-line-title">Chato Command Line</div>
+        <div class="command-line-title">MemOS Command Line</div>
         <div class="command-line-controls">
           <button class="command-line-btn" @click="minimizeCommandLine">
             <i class="fa-solid fa-window-minimize"></i>
@@ -167,7 +167,7 @@ const handleCommand = async (command) => {
   exit              - 关闭命令行窗口
   list-models       - 列出可用的模型
   echo [text]       - 显示文本
-  version           - 显示Chato版本信息
+  version           - 显示MemOS版本信息
           `;
           
     case 'clear':
@@ -186,7 +186,7 @@ const handleCommand = async (command) => {
       return args.join(' ');
           
     case 'version':
-      return 'Chato v0.1.0 - AI助手应用';
+      return 'MemOS v0.1.0 - AI助手应用';
           
     default:
       try {

@@ -33,7 +33,7 @@ class Logger:
         except Exception:
             self.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../logs')
             os.makedirs(self.log_dir, exist_ok=True)
-        self.log_file = os.path.join(self.log_dir, 'chato.log')
+        self.log_file = os.path.join(self.log_dir, 'memos.log')
         self.max_bytes = 10 * 1024 * 1024  # 10MB
         self.backup_count = 5
         self.encoding = 'utf-8'
@@ -42,7 +42,7 @@ class Logger:
         os.makedirs(self.log_dir, exist_ok=True)
         
         # 初始化日志记录器
-        self.logger = logging.getLogger('chato')
+        self.logger = logging.getLogger('memos')
         self.logger.setLevel(logging.INFO)
         self.logger.propagate = False
         

@@ -1,4 +1,4 @@
-"""Chato应用入口"""
+"""MemOS应用入口"""
 from contextlib import asynccontextmanager
 from app import create_app
 from app.core.config import ConfigManager

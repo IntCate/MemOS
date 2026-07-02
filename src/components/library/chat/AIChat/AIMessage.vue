@@ -12,7 +12,7 @@
     </div>
     
     <div v-if="contentWithoutTools" class="markdown-content text-gray-800 dark:text-gray-100 leading-relaxed">
-      <VueChatoRenderer :content="contentWithoutTools" />
+      <VueMemOSRenderer :content="contentWithoutTools" />
     </div>
     
     <!-- 错误状态显示 -->
@@ -50,7 +50,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Loading, ToolExecutionStatus, ToolCallPlan, VueChatoRenderer } from '../../index.js'
+import { Loading, ToolExecutionStatus, ToolCallPlan, VueMemOSRenderer } from '../../index.js'
 import { useChatBubble } from '../../../../composables/useChatBubble.js'
 
 const props = defineProps({

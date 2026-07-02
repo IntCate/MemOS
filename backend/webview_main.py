@@ -1,4 +1,4 @@
-"""Chato应用的PyWebView入口"""
+"""MemOS应用的PyWebView入口"""
 import webview
 import threading
 import screeninfo
@@ -33,7 +33,7 @@ def start_webview():
     
     # 创建webview窗口
     window = webview.create_window(
-        "Chato",
+        "MemOS",
         frontend_url,
         width=window_width,
         height=window_height,

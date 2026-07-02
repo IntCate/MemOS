@@ -20,6 +20,6 @@ export { default as SearchBar } from '../common/SearchBar.vue'
 export { default as SettingItem } from '../common/SettingItem.vue'
 export { default as Card } from '../common/Card.vue'
 
-// 导入并导出 VueChatoRenderer 组件
-import { VueChatoRenderer } from '../../plugins/vue-chato-renderer/index.js'
-export { VueChatoRenderer }
+// 导入并导出 VueMemOSRenderer 组件
+import { VueMemOSRenderer } from '../../plugins/vue-memos-renderer/index.js'
+export { VueMemOSRenderer }

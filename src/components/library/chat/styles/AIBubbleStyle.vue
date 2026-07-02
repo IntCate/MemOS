@@ -10,7 +10,7 @@
     </div>
     <div class="relative group">
       <!-- 模型名称 -->
-      <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 ml-1">{{ messageValue.model || 'Chato' }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 ml-1">{{ messageValue.model || 'MemOS' }}</div>
       
       <!-- 思考内容 -->
       <div v-if="messageValue.reasoning_content" class="relative mb-2">
@@ -129,13 +129,13 @@ const {
 
 // 从模型名称中提取供应商名称
 const modelVendor = computed(() => {
-  const modelName = messageValue.value.model || 'Chato';
+  const modelName = messageValue.value.model || 'MemOS';
   return iconService.extractVendor(modelName);
 });
 
 // 生成模型图标 URL
 const modelIconUrl = computed(() => {
-  const modelName = messageValue.value.model || 'Chato';
+  const modelName = messageValue.value.model || 'MemOS';
   return iconService.getIconUrl(modelName);
 });
 

@@ -37,9 +37,9 @@ def get_embedding_model_service():
     return service_container.get_service('embedding_model_service')
 
 
-def get_mcp_service():
-    """获取MCP服务实例"""
-    return service_container.get_service('mcp_service')
+def get_mcp_capability():
+    """获取MCP能力服务实例"""
+    return service_container.get_service('mcp_capability')
 
 
 def get_setting_service():

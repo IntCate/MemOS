@@ -1,8 +1,8 @@
-# Vue-Chato-Renderer 插件
+# Vue-MemOS-Renderer 插件
 
 ## 简介
 
-Vue-Chato-Renderer 是一个功能强大的 Vue 插件，提供统一的 Markdown 渲染功能，支持代码高亮、代码复制、数学公式和 Mermaid 图表等高级特性。
+Vue-MemOS-Renderer 是一个功能强大的 Vue 插件，提供统一的 Markdown 渲染功能，支持代码高亮、代码复制、数学公式和 Mermaid 图表等高级特性。
 
 ## 特性
 
@@ -18,8 +18,8 @@ Vue-Chato-Renderer 是一个功能强大的 Vue 插件，提供统一的 Markdow
 ## 目录结构
 
 ```
-vue-chato-renderer/
-├── VueChatoRenderer.vue       # 主组件
+vue-memos-renderer/
+├── VueMemOSRenderer.vue       # 主组件
 ├── components/
 │   └── CodeBlock.vue          # 代码块组件
 ├── core/
@@ -47,13 +47,13 @@ vue-chato-renderer/
 ### NPM 安装
 
 ```bash
-npm install vue-chato-renderer
+npm install vue-memos-renderer
 ```
 
 ### 直接引入
 
 ```html
-<script src="path/to/vue-chato-renderer.js"></script>
+<script src="path/to/vue-memos-renderer.js"></script>
 ```
 
 ## 使用方法
@@ -63,12 +63,12 @@ npm install vue-chato-renderer
 ```javascript
 import { createApp } from 'vue'
 import App from './App.vue'
-import VueChatoRenderer from './plugins/vue-chato-renderer'
+import VueMemOSRenderer from './plugins/vue-memos-renderer'
 
 const app = createApp(App)
 
 // 全局注册插件
-app.use(VueChatoRenderer, {
+app.use(VueMemOSRenderer, {
   breaks: true,           // 自动换行
   gfm: true,              // GitHub Flavored Markdown
   highlight: true,        // 代码高亮
@@ -83,7 +83,7 @@ app.mount('#app')
 
 ```vue
 <template>
-  <VueChatoRenderer 
+  <VueMemOSRenderer 
     :content="markdownContent" 
     :config="renderConfig"
   />
@@ -99,7 +99,7 @@ export default {
 这是一个 **Markdown** 示例
 
 \`\`\`javascript
-console.log('Hello, Vue-Chato-Renderer!')
+console.log('Hello, Vue-MemOS-Renderer!')
 \`\`\`
 
 - 列表项 1
@@ -140,7 +140,7 @@ graph TD
 ### 3. 作为工具使用
 
 ```javascript
-import { createMarkdownRenderer } from './plugins/vue-chato-renderer/core/markdown-renderer.js'
+import { createMarkdownRenderer } from './plugins/vue-memos-renderer/core/markdown-renderer.js'
 
 // 创建渲染器实例
 const renderer = createMarkdownRenderer({
@@ -243,7 +243,7 @@ graph TD
 
 ### 组件
 
-1. **VueChatoRenderer.vue**：主渲染组件
+1. **VueMemOSRenderer.vue**：主渲染组件
 2. **CodeBlock.vue**：代码块组件，支持高亮和复制功能
 
 ## 贡献
@@ -270,6 +270,6 @@ MIT License
 
 ## 联系方式
 
-- 作者：Chato Team
-- 邮箱：contact@chato.dev
-- 官网：https://chato.dev
+- 作者：MemOS Team
+- 邮箱：contact@memos.dev
+- 官网：https://memos.dev

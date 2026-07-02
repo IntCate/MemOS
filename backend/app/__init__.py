@@ -1,4 +1,4 @@
-"""Chato应用主包"""
+"""MemOS应用主包"""
 import os
 import sys
 from fastapi.staticfiles import StaticFiles
@@ -85,8 +85,8 @@ def create_app(lifespan=None):
     register_services()
     
     app = FastAPI(
-        title="ChaTo API",
-        description="ChaTo后端API服务",
+        title="MemOS API",
+        description="MemOS后端API服务",
         version="1.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",

@@ -16,7 +16,7 @@ def ensure_data_dir():
 def init_db():
     """初始化SQLite数据库，创建表结构"""
     user_data_dir = ensure_data_dir()
-    db_path = os.path.join(user_data_dir, 'config', 'chato.db')
+    db_path = os.path.join(user_data_dir, 'config', 'memos.db')
     
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
@@ -307,7 +307,7 @@ def load_data():
     """加载数据"""
     user_data_dir = ensure_data_dir()
     
-    db_path = os.path.join(user_data_dir, 'config', 'chato.db')
+    db_path = os.path.join(user_data_dir, 'config', 'memos.db')
     db_file_exists = os.path.exists(db_path)
     
     try:

@@ -1,4 +1,4 @@
-"""Chato 工具函数模块"""
+"""MemOS 工具函数模块"""
 
 # 统一验证工具
 from .validators import ValidationUtils

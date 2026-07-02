@@ -6,7 +6,7 @@ import { createVNodeTransformer } from './core/vnode-transformer.js'
 import { createCodeHighlighter } from './extensions/code-highlighter.js'
 
 export default defineComponent({
-  name: 'VueChatoRenderer',
+  name: 'VueMemOSRenderer',
   props: {
     content: {
       type: String,
@@ -186,7 +186,7 @@ export default defineComponent({
 </style>
 
 <style>
-/* 导入全局 Vue-Chato-Renderer 样式 */
+/* 导入全局 Vue-MemOS-Renderer 样式 */
 @import './styles/variables.css';
 @import './styles/markdown-styles.css';
 </style>

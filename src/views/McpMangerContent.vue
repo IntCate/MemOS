@@ -609,7 +609,7 @@ const selectTool = (tool) => {
 // 从后端获取当前的MCP配置
 const fetchCurrentConfig = async () => {
   try {
-    // 计算配置文件路径: H:\ChaTo\backend\config\mcp_config.json
+    // 计算配置文件路径: H:\MemOS\backend\config\mcp_config.json
     // 由于前端无法直接读取本地文件，我们需要通过API获取
     // 注意：这里假设后端已经提供了获取配置文件的API
     // 如果没有，我们可以在后端添加一个API端点

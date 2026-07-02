@@ -111,7 +111,7 @@
         
         <!-- 步骤内容 -->
         <div v-if="step.content" class="markdown-content text-gray-800 dark:text-gray-100 leading-relaxed">
-          <VueChatoRenderer :content="step.content" />
+          <VueMemOSRenderer :content="step.content" />
         </div>
       </div>
     </div>
@@ -119,7 +119,7 @@
     <!-- 普通AI消息 -->
     <div v-else-if="formattedContent || messageValue.error || messageValue.isTyping" class="rounded-lg px-5 py-4 overflow-hidden w-full mt-3">
       <div class="markdown-content text-gray-800 dark:text-gray-100 leading-relaxed">
-        <VueChatoRenderer :content="formattedContent" :key="updateKey" />
+        <VueMemOSRenderer :content="formattedContent" :key="updateKey" />
       </div>
       
       <!-- 错误状态显示 -->
@@ -142,7 +142,7 @@
       <div v-if="!messageValue.isTyping && (formattedContent || messageValue.reasoning_content || messageValue.error || messageValue.status === 'tool_executed')" class="text-sm text-gray-500 dark:text-gray-400 mt-2 flex items-center justify-between px-5">
       <span>
         <!-- 模型名称+时间 -->
-        {{ messageValue.model || 'Chato' }} - {{ formatTime(messageValue.timestamp || messageValue.time) }}
+        {{ messageValue.model || 'MemOS' }} - {{ formatTime(messageValue.timestamp || messageValue.time) }}
       </span>
       <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <Tooltip content="引用消息">
@@ -169,7 +169,7 @@
 import { Tooltip, ToolExecutionStatus, Loading } from '../../index.js'
 import { useChatBubble } from '../../../../composables/useChatBubble.js'
 import { formatTime } from '../../../../utils/time.js'
-import { VueChatoRenderer } from '../../../../plugins/vue-chato-renderer/index.js'
+import { VueMemOSRenderer } from '../../../../plugins/vue-memos-renderer/index.js'
 import { eventBus } from '../../../../services/eventBus.js'
 
 const props = defineProps({
