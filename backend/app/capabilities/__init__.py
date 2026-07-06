@@ -15,11 +15,11 @@
 from .mcp import MCPCapability
 from .skill import (
     Skill, SkillManager, SkillManagerImpl, skill_manager,
-    FileBasedSkill, SkillLoader, get_skill_loader, load_skills_from_filesystem,
-    # 旧版轮询监听器（向后兼容）
-    SkillWatcher, get_skill_watcher, start_skill_watcher, stop_skill_watcher,
-    # 新版 watchdog 即时热加载
-    SkillHotReloader, get_skill_hotreloader, start_skill_hotreload, stop_skill_hotreload,
+    FileBasedSkill,
+    SkillPathResolver,
+    SkillRegistry,
+    SkillHotReloader, get_skill_system, start_skill_hotreload, stop_skill_hotreload,
+    SkillSelector, get_skill_selector,
     init_skills,
 )
 
@@ -30,16 +30,13 @@ __all__ = [
     'SkillManagerImpl',
     'skill_manager',
     'FileBasedSkill',
-    'SkillLoader',
-    'get_skill_loader',
-    'load_skills_from_filesystem',
-    'SkillWatcher',
-    'get_skill_watcher',
-    'start_skill_watcher',
-    'stop_skill_watcher',
+    'SkillPathResolver',
+    'SkillRegistry',
     'SkillHotReloader',
-    'get_skill_hotreloader',
+    'get_skill_system',
     'start_skill_hotreload',
     'stop_skill_hotreload',
+    'SkillSelector',
+    'get_skill_selector',
     'init_skills',
 ]
