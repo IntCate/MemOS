@@ -43,25 +43,20 @@ class SkillRegistry:
             if not skill_dir:
                 return None
 
-            try:
-                with open(skill_md_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
+            with open(skill_md_path, 'r', encoding='utf-8') as f:
+                content = f.read()
 
-                skill = Skill.from_markdown(content, skill_name, skill_dir)
-                if not skill:
-                    logger.warning(f"[Skill] 技能解析失败: {skill_name}")
-                    return None
-
-                self.skills[skill_name] = skill
-
-                event_type = "reload" if old_existed else "add"
-                logger.info(f"[Skill] 技能已{'更新' if old_existed else '添加'}: {skill_name}")
-                self._notify_listeners(event_type, skill_name)
-                return skill
-
-            except Exception as e:
-                logger.error(f"[Skill] 加载技能 {skill_name} 失败: {e}", exc_info=True)
+            skill = Skill.from_markdown(content, skill_name, skill_dir)
+            if not skill:
+                logger.warning(f"[Skill] 技能解析失败: {skill_name}")
                 return None
+
+            self.skills[skill_name] = skill
+
+            event_type = "reload" if old_existed else "add"
+            logger.info(f"[Skill] 技能已{'更新' if old_existed else '添加'}: {skill_name}")
+            self._notify_listeners(event_type, skill_name)
+            return skill
 
     def _atomic_remove_skill(self, skill_name: str) -> bool:
         with self._lock:

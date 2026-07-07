@@ -5,12 +5,14 @@
   2. 检测到 SKILL.md 的创建/修改/删除事件时立即触发
   3. 内置防抖机制（debounce 300ms），避免编辑器保存时的连续事件
   4. 通过 asyncio 事件循环集成，与 FastAPI 应用协程兼容
-  5. 热更新时同步重建 BM25 索引
+  5. 热更新时通过回调通知外部更新索引
+
+必须通过 SkillSystem 门面类创建，不支持全局单例。
 """
 import asyncio
 import os
 import threading
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Callable
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -18,18 +20,6 @@ from watchdog.events import FileSystemEventHandler
 from app.core.logger import logger
 from app.capabilities.skill.path_resolver import SkillPathResolver
 from app.capabilities.skill.registry import SkillRegistry
-
-
-def _notify_selector_update(skill_name: str = None):
-    try:
-        from app.capabilities.skill.skill_selector import get_skill_selector
-        selector = get_skill_selector()
-        if skill_name:
-            selector.update_skill_index(skill_name)
-        else:
-            selector.build_index()
-    except Exception as e:
-        logger.error(f"[Skill] 更新语义索引失败: {e}", exc_info=True)
 
 
 class _SkillFileHandler(FileSystemEventHandler):
@@ -66,9 +56,19 @@ class SkillHotReloader:
     """基于 watchdog 的 Skill 即时热加载器
 
     响应延迟 < 500ms，替代旧版 5 秒轮询。
+
+    使用方式：必须通过 SkillSystem 门面类创建，不支持单独使用。
+    
+    通过回调机制通知外部更新索引：
+    - on_skill_updated(skill_name): 技能更新时调用
+    - on_skill_removed(skill_name): 技能移除时调用
+    - on_skills_reloaded(): 全量重载时调用
     """
 
-    def __init__(self, skills_dir: str, debounce_seconds: float = 0.3):
+    def __init__(self, skills_dir: str, debounce_seconds: float = 0.3,
+                 on_skill_updated: Optional[Callable[[str], None]] = None,
+                 on_skill_removed: Optional[Callable[[str], None]] = None,
+                 on_skills_reloaded: Optional[Callable[[], None]] = None):
         self.debounce_seconds = debounce_seconds
         self._observer: Optional[Observer] = None
         self._handler: Optional[_SkillFileHandler] = None
@@ -87,6 +87,10 @@ class SkillHotReloader:
 
         self._running = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+        self._on_skill_updated = on_skill_updated
+        self._on_skill_removed = on_skill_removed
+        self._on_skills_reloaded = on_skills_reloaded
 
     @property
     def is_running(self) -> bool:
@@ -173,7 +177,8 @@ class SkillHotReloader:
             self._reset_debounce_timer()
 
         self._registry.load_all_skills()
-        _notify_selector_update()
+        if self._on_skills_reloaded:
+            self._on_skills_reloaded()
 
     def _reset_debounce_timer(self):
         if self._debounce_timer:
@@ -210,38 +215,10 @@ class SkillHotReloader:
                 if skill:
                     updated_names.append(skill.name)
 
-        if removed_names:
+        if removed_names and self._on_skill_removed:
             for name in removed_names:
-                try:
-                    from app.capabilities.skill.skill_selector import get_skill_selector
-                    get_skill_selector().remove_skill_index(name)
-                except Exception as e:
-                    logger.error(f"[Skill] 移除技能索引失败: {name}, 错误: {e}", exc_info=True)
+                self._on_skill_removed(name)
 
-        if updated_names:
+        if updated_names and self._on_skill_updated:
             for name in updated_names:
-                _notify_selector_update(name)
-
-
-_skill_system: Optional[SkillHotReloader] = None
-
-
-def get_skill_system(skills_dir: str = None, debounce_seconds: float = 0.3) -> SkillHotReloader:
-    global _skill_system
-    if _skill_system is None:
-        if skills_dir is None:
-            from app.utils.path_manager import PathManager
-            skills_dir = os.path.join(PathManager.get_user_data_dir(), 'skills')
-        _skill_system = SkillHotReloader(skills_dir, debounce_seconds)
-    return _skill_system
-
-
-async def start_skill_hotreload(debounce_seconds: float = 0.3):
-    system = get_skill_system(debounce_seconds=debounce_seconds)
-    await system.start()
-
-
-async def stop_skill_hotreload():
-    global _skill_system
-    if _skill_system is not None:
-        await _skill_system.stop()
+                self._on_skill_updated(name)

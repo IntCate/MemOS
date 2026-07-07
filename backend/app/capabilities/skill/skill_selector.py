@@ -4,59 +4,61 @@
 索引构建速度提升 10-100 倍，即使全量重建也能满足热加载需求。
 
 工作原理：
-  1. 使用 bm25s.tokenize() 对所有 Skill 的 Level 1 数据进行分词
+  1. 使用 jieba 分词器对所有 Skill 的 Level 1 数据进行分词
   2. 使用 BM25.index() 建立稀疏矩阵索引
   3. 收到用户查询时，使用 BM25.retrieve() 获取 top_k 结果
   4. 热加载时更新 corpus 并重建索引（bm25s 重建速度极快）
 
-集成方式：
-  AI Subsystem → assemble_prompt 阶段调用 SkillSelector
-  → 仅将筛选后的技能注入为 OpenAI Tools 格式
+集成方式：必须通过 SkillSystem 门面类创建，不支持全局单例。
+
+依赖：
+  - bm25s: 高速 BM25 实现
+  - jieba: 中文分词
 """
 import os
 import threading
 from typing import Dict, List, Optional, Any
 
+import bm25s
+import jieba
+
 from app.core.logger import logger
-from app.capabilities.skill.manager import skill_manager
 from app.capabilities.skill.protocol import Skill
+
+
+def _tokenize_text(text: str) -> List[str]:
+    """使用 jieba 分词"""
+    return [t for t in jieba.lcut(text) if len(t) >= 2]
 
 
 class SkillSelector:
     """基于 bm25s 的技能筛选器
 
-    使用 bm25s 实现高速 BM25 匹配，支持中文分词（jieba）和英文分词。
+    使用 bm25s 实现高速 BM25 匹配，使用 jieba 进行中文分词。
     线程安全设计，支持热加载场景。
+
+    依赖：bm25s 和 jieba 必须已安装，否则在导入时直接报错。
+
+    必须通过 SkillSystem 门面类创建，不支持单独使用。
     """
 
-    def __init__(self, top_k: int = 5, score_threshold: float = 0.01):
+    def __init__(self, manager, top_k: int = 5, score_threshold: float = 0.01):
         """
         Args:
+            manager: SkillManager 实例，提供技能获取能力（必须）
             top_k: 最多返回的技能数
             score_threshold: BM25 分数阈值，低于此值的技能被丢弃
         """
+        if manager is None:
+            raise ValueError("manager 参数不能为空，必须传入 SkillManager 实例")
+        
         self.top_k = top_k
         self.score_threshold = score_threshold
+        self._manager = manager
         self._bm25 = None
         self._skill_names: List[str] = []
         self._corpus_tokens = None
         self._lock = threading.RLock()
-
-    @property
-    def _tokenizer(self):
-        """延迟加载分词器"""
-        try:
-            import jieba
-            return jieba.lcut
-        except ImportError:
-            logger.warning("[SkillSelector] jieba 未安装，使用字符级分词")
-            return lambda text: list(text)
-
-    def _tokenize(self, text: str) -> List[str]:
-        """分词处理（支持中英文）"""
-        tokenizer = self._tokenizer
-        tokens = tokenizer(text.lower())
-        return [t for t in tokens if len(t) >= 2]
 
     def build_index(self) -> int:
         """为所有已注册 Skill 构建 BM25 索引
@@ -65,29 +67,23 @@ class SkillSelector:
             成功索引的技能数量
         """
         with self._lock:
-            skills = skill_manager.get_enabled_skills()
+            skills = self._manager.get_enabled_skills()
             if not skills:
-                return 0
-
-            try:
-                import bm25s
-            except ImportError:
-                logger.warning("[SkillSelector] bm25s 未安装，无法构建索引")
                 return 0
 
             self._skill_names = list(skills.keys())
             
-            corpus_texts = []
+            corpus_tokens = []
             for name, skill in skills.items():
                 spec = skill.get_level1_spec()
                 text = f"{spec['name']} {spec['description']}"
                 for param in spec.get('parameters', []):
                     text += f" {param.get('name', '')} {param.get('description', '')}"
-                corpus_texts.append(text)
+                corpus_tokens.append(_tokenize_text(text))
 
-            self._corpus_tokens = bm25s.tokenize(corpus_texts)
+            self._corpus_tokens = corpus_tokens
             self._bm25 = bm25s.BM25()
-            self._bm25.index(self._corpus_tokens)
+            self._bm25.index(corpus_tokens)
 
             logger.info(f"[SkillSelector] BM25 索引完成: {len(self._skill_names)} 个 Skill")
             return len(self._skill_names)
@@ -105,7 +101,7 @@ class SkillSelector:
             bool: 是否成功更新
         """
         with self._lock:
-            skill = skill_manager.get_skill(skill_name)
+            skill = self._manager.get_skill(skill_name)
             if not skill:
                 return False
 
@@ -123,8 +119,7 @@ class SkillSelector:
                 for param in spec.get('parameters', []):
                     text += f" {param.get('name', '')} {param.get('description', '')}"
                 
-                import bm25s
-                self._corpus_tokens[idx] = bm25s.tokenize([text])[0]
+                self._corpus_tokens[idx] = _tokenize_text(text)
                 self._bm25.index(self._corpus_tokens)
                 
                 logger.info(f"[SkillSelector] 技能索引已更新: {skill_name}")
@@ -132,9 +127,6 @@ class SkillSelector:
             except ValueError:
                 self.build_index()
                 return True
-            except Exception as e:
-                logger.error(f"[SkillSelector] 更新技能索引失败 {skill_name}: {e}", exc_info=True)
-                return False
 
     def remove_skill_index(self, skill_name: str):
         """热卸载时移除 Skill 索引"""
@@ -149,77 +141,32 @@ class SkillSelector:
                 logger.info(f"[SkillSelector] 技能索引已移除: {skill_name}")
             except ValueError:
                 pass
-            except Exception as e:
-                logger.error(f"[SkillSelector] 移除技能索引失败 {skill_name}: {e}", exc_info=True)
 
     def _rank_by_bm25(self, query: str) -> List[Dict[str, Any]]:
         """基于 BM25 分数排序 Skills"""
         with self._lock:
             if self._bm25 is None:
-                return self._rank_by_keyword(query)
+                return []
 
             if not self._skill_names:
                 return []
 
-            try:
-                import bm25s
-                query_tokens = bm25s.tokenize([query])
-                if query_tokens[0].size == 0:
-                    return []
+            query_tokens = _tokenize_text(query)
+            if not query_tokens:
+                return []
 
-                results, scores = self._bm25.retrieve(query_tokens, k=len(self._skill_names))
-                
-                ranked = []
-                for i in range(results.shape[1]):
-                    doc_idx = int(results[0, i])
-                    if doc_idx < len(self._skill_names):
-                        ranked.append({
-                            'skill_name': self._skill_names[doc_idx],
-                            'similarity': float(scores[0, i]),
-                        })
-
-                return ranked
-            except Exception as e:
-                logger.error(f"[SkillSelector] BM25 排序失败: {e}", exc_info=True)
-                return self._rank_by_keyword(query)
-
-    def _rank_by_keyword(self, query: str) -> List[Dict[str, Any]]:
-        """关键词匹配回退方案（无 bm25s 库时）"""
-        query_lower = query.lower()
-        results = []
-
-        for name, skill in skill_manager.get_enabled_skills().items():
-            spec = skill.get_level1_spec()
-            desc_lower = spec.get('description', '').lower()
-            name_lower = spec.get('name', '').lower()
+            results, scores = self._bm25.retrieve([query_tokens], k=len(self._skill_names))
             
-            score = 0.0
+            ranked = []
+            for i in range(results.shape[1]):
+                doc_idx = int(results[0, i])
+                if doc_idx < len(self._skill_names):
+                    ranked.append({
+                        'skill_name': self._skill_names[doc_idx],
+                        'similarity': float(scores[0, i]),
+                    })
 
-            for term in name_lower.replace('_', ' ').split():
-                if len(term) >= 2 and term in query_lower:
-                    score += 0.5
-
-            desc_clean = desc_lower.replace('，', ' ').replace('、', ' ').replace('。', ' ')
-            for term in desc_clean.split():
-                if len(term) >= 2 and term in query_lower:
-                    score += 0.3
-
-            for size in (4, 3, 2):
-                for i in range(len(query_lower) - size + 1):
-                    sub = query_lower[i:i+size]
-                    if sub in desc_lower or sub in name_lower:
-                        score += 0.15 * (size / 4.0)
-                        break
-
-            score = min(score, 1.0)
-            if score > 0:
-                results.append({
-                    'skill_name': name,
-                    'similarity': round(score, 4),
-                })
-
-        results.sort(key=lambda x: x['similarity'], reverse=True)
-        return results
+            return ranked
 
     def get_level0_names(self, query: str, top_k: int = None, threshold: float = None) -> List[str]:
         """Level 0: 根据查询筛选最相关的 Skill 名称列表（最轻量）
@@ -245,7 +192,7 @@ class SkillSelector:
             if item['similarity'] < th:
                 continue
             skill_name = item['skill_name']
-            skill = skill_manager.get_skill(skill_name)
+            skill = self._manager.get_skill(skill_name)
             if skill and skill.is_enabled():
                 names.append(skill.get_level0_name())
             if len(names) >= k:
@@ -280,7 +227,7 @@ class SkillSelector:
             if item['similarity'] < th:
                 continue
             skill_name = item['skill_name']
-            skill = skill_manager.get_skill(skill_name)
+            skill = self._manager.get_skill(skill_name)
             if skill and skill.is_enabled():
                 item['level1_spec'] = self._build_level1_spec(skill)
                 selected.append(item)
@@ -299,11 +246,11 @@ class SkillSelector:
 
     def get_level2_instructions(self, skill_name: str) -> Optional[str]:
         """Level 1→2 展开：获取指定 Skill 的完整指令"""
-        return skill_manager.get_skill_full_instructions(skill_name)
+        return self._manager.get_skill_full_instructions(skill_name)
 
     def get_level3_references(self, skill_name: str) -> Dict[str, str]:
         """Level 2→3 展开：获取指定 Skill 的参考文档"""
-        return skill_manager.get_skill_references(skill_name)
+        return self._manager.get_skill_references(skill_name)
 
     def get_selected_skills_context(self, query: str, top_k: int = None, threshold: float = None) -> List[Dict[str, Any]]:
         """返回筛选后的 Level 1 规格（自然语言格式，用于 system prompt 注入）
@@ -362,7 +309,7 @@ class SkillSelector:
         }
 
     def _get_skill_spec(self, skill_name: str) -> Dict[str, Any]:
-        skill = skill_manager.get_skill(skill_name)
+        skill = self._manager.get_skill(skill_name)
         if not skill:
             return {}
         s = skill.get_level1_spec()
@@ -370,16 +317,3 @@ class SkillSelector:
             'description': s.get('description', ''),
             'category': s.get('category', ''),
         }
-
-
-_skill_selector: Optional[SkillSelector] = None
-
-
-def get_skill_selector(
-    top_k: int = 5,
-    score_threshold: float = 0.01,
-) -> SkillSelector:
-    global _skill_selector
-    if _skill_selector is None:
-        _skill_selector = SkillSelector(top_k, score_threshold)
-    return _skill_selector

@@ -264,6 +264,7 @@ name: test_skill
             assert registry.get_skill('test_skill') is None
 
     def test_exclusive_rule_single_level(self):
+        """测试二级优先规则：一级和二级都有 SKILL.md 时，加载二级并警告"""
         with tempfile.TemporaryDirectory() as tmpdir:
             resolver = SkillPathResolver(tmpdir)
             registry = SkillRegistry(resolver)
@@ -288,8 +289,8 @@ description: 子技能
             
             registry.load_all_skills()
             skills = registry.get_skill_names()
-            assert 'category' in skills
-            assert 'sub_skill' not in skills
+            assert 'sub_skill' in skills
+            assert 'category' not in skills
 
     def test_exclusive_rule_two_levels(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -308,6 +309,78 @@ description: 子技能
             registry.load_all_skills()
             skills = registry.get_skill_names()
             # 新设计：注册表 key = skill_name（叶子名）
+            assert 'sub_skill' in skills
+            assert len(skills) == 1
+
+    def test_no_skill_in_both_levels(self):
+        """测试场景1：一级和二级都没有 SKILL.md"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            resolver = SkillPathResolver(tmpdir)
+            registry = SkillRegistry(resolver)
+            
+            os.makedirs(os.path.join(tmpdir, 'empty_category', 'empty_sub'))
+            
+            registry.load_all_skills()
+            skills = registry.get_skill_names()
+            assert len(skills) == 0
+
+    def test_top_level_with_empty_subdirs(self):
+        """测试场景5：一级有 SKILL.md，二级目录存在但为空"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            resolver = SkillPathResolver(tmpdir)
+            registry = SkillRegistry(resolver)
+            
+            os.makedirs(os.path.join(tmpdir, 'category', 'empty_sub'))
+            with open(os.path.join(tmpdir, 'category', 'SKILL.md'), 'w') as f:
+                f.write("""---
+name: category
+description: 分类技能
+---
+指令
+""")
+            
+            registry.load_all_skills()
+            skills = registry.get_skill_names()
+            assert 'category' in skills
+            assert len(skills) == 1
+
+    def test_top_level_only(self):
+        """测试场景3：一级有 SKILL.md，二级目录不存在"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            resolver = SkillPathResolver(tmpdir)
+            registry = SkillRegistry(resolver)
+            
+            os.makedirs(os.path.join(tmpdir, 'standalone_skill'))
+            with open(os.path.join(tmpdir, 'standalone_skill', 'SKILL.md'), 'w') as f:
+                f.write("""---
+name: standalone_skill
+description: 独立技能
+---
+指令
+""")
+            
+            registry.load_all_skills()
+            skills = registry.get_skill_names()
+            assert 'standalone_skill' in skills
+            assert len(skills) == 1
+
+    def test_second_level_only(self):
+        """测试场景2：一级无 SKILL.md，二级有 SKILL.md"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            resolver = SkillPathResolver(tmpdir)
+            registry = SkillRegistry(resolver)
+            
+            os.makedirs(os.path.join(tmpdir, 'category', 'sub_skill'))
+            with open(os.path.join(tmpdir, 'category', 'sub_skill', 'SKILL.md'), 'w') as f:
+                f.write("""---
+name: sub_skill
+description: 子技能
+---
+指令
+""")
+            
+            registry.load_all_skills()
+            skills = registry.get_skill_names()
             assert 'sub_skill' in skills
             assert len(skills) == 1
 
@@ -443,19 +516,16 @@ parameters:
 指令内容
 """)
             
-            from app.capabilities.skill.skill_selector import SkillSelector, get_skill_selector
-            from app.capabilities.skill.skill_hotreload import get_skill_system
+            from app.capabilities.skill import SkillSystem
             
-            get_skill_system(skills_dir=tmpdir)
+            skill_system = SkillSystem(skills_dir=tmpdir)
+            asyncio.run(skill_system.start())
             
-            selector = SkillSelector(top_k=2)
-            selector.build_index()
-            
-            names = selector.get_level0_names('搜索网络信息')
+            names = skill_system.get_skill_names('搜索网络信息', top_k=2)
             assert len(names) <= 2
             assert 'web_search' in names
             
-            names = selector.get_level0_names('分析数据')
+            names = skill_system.get_skill_names('分析数据', top_k=2)
             assert len(names) <= 2
             assert 'data_analyzer' in names
 
@@ -471,15 +541,11 @@ description: 网络搜索
 指令
 """)
             
-            from app.capabilities.skill.skill_selector import SkillSelector
-            from app.capabilities.skill.skill_hotreload import get_skill_system
+            from app.capabilities.skill import SkillSystem
             
-            get_skill_system(skills_dir=tmpdir)
+            skill_system = SkillSystem(skills_dir=tmpdir)
             
-            selector = SkillSelector()
-            selector.build_index()
-            
-            names = selector.get_level0_names('')
+            names = skill_system.get_skill_names('')
             assert len(names) == 0
 
     def test_manager_get_level0_skill_names(self):
@@ -494,15 +560,12 @@ description: 网络搜索
 指令
 """)
             
-            from app.capabilities.skill.manager import skill_manager
-            from app.capabilities.skill.skill_hotreload import get_skill_system
-            from app.capabilities.skill.skill_selector import get_skill_selector
+            from app.capabilities.skill import SkillSystem
             
-            get_skill_system(skills_dir=tmpdir)
-            selector = get_skill_selector()
-            selector.build_index()
+            skill_system = SkillSystem(skills_dir=tmpdir)
+            asyncio.run(skill_system.start())
             
-            names = skill_manager.get_level0_skill_names('搜索')
+            names = skill_system.get_skill_names('搜索')
             assert 'web_search' in names
 
 

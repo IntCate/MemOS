@@ -13,12 +13,19 @@ from app.core.logger import logger
 
 
 class SkillPathResolver:
-    """统一处理技能路径解析，支持两级分类（最多 category/skill），互斥扫描
+    """统一处理技能路径解析，支持两级分类（最多 category/skill），二级优先
 
     skill_name 规则：
       - 一级目录：skills/web_search/SKILL.md → skill_name = "web_search"
       - 二级目录：skills/tools/file_manager/SKILL.md → skill_name = "file_manager"
-      - skill_name 全局唯一（互斥规则 + 注册中心双重保障）
+      - skill_name 全局唯一（二级优先规则 + 注册中心双重保障）
+
+    二级优先规则：
+      - 一级和二级都有 SKILL.md → 加载二级，写入警告
+      - 一级有 SKILL.md，二级目录不存在 → 加载一级
+      - 一级有 SKILL.md，二级目录存在但为空 → 加载一级，写入警告
+      - 一级无 SKILL.md，二级有 SKILL.md → 加载二级
+      - 一级和二级都无 SKILL.md → 无技能，写入警告
     """
 
     def __init__(self, skills_dir: str, skill_file_name: str = "SKILL.md"):
@@ -37,9 +44,12 @@ class SkillPathResolver:
     def _scan_all_entries(self) -> List[Tuple[str, str]]:
         """扫描所有技能，返回 [(skill_name, rel_path), ...]
 
-        互斥规则：
-          - 一级目录下有 SKILL.md → skill_name=目录名，不再扫描其子目录
-          - 否则 → 扫描二级子目录，skill_name=子目录名
+        二级优先规则：
+          - 一级目录有 SKILL.md，二级目录也有 SKILL.md → 加载二级，写入警告
+          - 一级目录有 SKILL.md，二级目录不存在 → 加载一级
+          - 一级目录有 SKILL.md，二级目录存在但为空 → 加载一级，写入警告
+          - 一级目录无 SKILL.md，二级目录有 SKILL.md → 加载二级
+          - 一级和二级都无 SKILL.md → 无技能，写入警告
         """
         results: List[Tuple[str, str]] = []
         if not os.path.exists(self.skills_dir):
@@ -51,24 +61,50 @@ class SkillPathResolver:
                     if not entry.is_dir() or entry.name.startswith('.'):
                         continue
 
-                    md_path = os.path.join(entry.path, self.skill_file_name)
-                    if os.path.isfile(md_path):
-                        results.append((entry.name, entry.name))
-                        continue
+                    has_top_md = False
+                    top_md_path = os.path.join(entry.path, self.skill_file_name)
+                    if os.path.isfile(top_md_path):
+                        has_top_md = True
 
+                    sub_skills = []
+                    has_sub_dirs = False
                     try:
                         with os.scandir(entry.path) as sub_entries:
                             for sub in sub_entries:
                                 if not sub.is_dir() or sub.name.startswith('.'):
                                     continue
+                                if sub.name in ('references', 'scripts'):
+                                    continue
+                                has_sub_dirs = True
                                 sub_md = os.path.join(sub.path, self.skill_file_name)
                                 if os.path.isfile(sub_md):
                                     rel = f"{entry.name}/{sub.name}"
-                                    results.append((sub.name, rel))
+                                    sub_skills.append((sub.name, rel))
                                 else:
                                     self._check_deep_nesting(sub.path, entry.name)
                     except PermissionError:
                         logger.warning(f"[Skill] 无权限访问子目录: {entry.path}")
+
+                    if sub_skills:
+                        results.extend(sub_skills)
+                        if has_top_md:
+                            logger.warning(
+                                f"[Skill] 冲突检测：一级目录 {entry.name}/SKILL.md 与二级目录技能共存，"
+                                f"已加载二级技能，一级技能被忽略（二级优先）"
+                            )
+                    else:
+                        if has_top_md:
+                            results.append((entry.name, entry.name))
+                            if has_sub_dirs:
+                                logger.warning(
+                                    f"[Skill] 一级目录 {entry.name}/SKILL.md 存在，但二级目录为空，"
+                                    f"建议删除空二级目录或在二级目录创建 SKILL.md"
+                                )
+                        else:
+                            if has_sub_dirs:
+                                logger.warning(
+                                    f"[Skill] 目录 {entry.name}/ 下无有效技能（一级和二级都没有 SKILL.md），已忽略"
+                                )
         except PermissionError:
             logger.warning(f"[Skill] 无权限访问目录: {self.skills_dir}")
 

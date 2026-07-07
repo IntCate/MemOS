@@ -167,8 +167,8 @@ class PromptEngine:
             return ''
         
         try:
-            from app.capabilities.skill.skill_selector import get_skill_selector
-            selector = get_skill_selector()
+            from app.core.service_container import service_container
+            selector = service_container.get_service('skill_selector')
             selected = selector.get_selected_skills_context(query)
             
             if not selected:

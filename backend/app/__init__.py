@@ -3,6 +3,8 @@ import os
 import sys
 from fastapi.staticfiles import StaticFiles
 
+_skill_system = None
+
 def register_services():
     """注册所有服务到服务容器
     
@@ -45,10 +47,14 @@ def register_services():
     service_container.register_service('document_repository', DocumentRepository)
     service_container.register_service('folder_repository', FolderRepository)
     
-    from app.capabilities import MCPCapability, skill_manager, init_skills
+    from app.capabilities import MCPCapability, SkillSystem
     service_container.register_service('mcp_capability', MCPCapability)
-    service_container.register_service('skill_manager', lambda: skill_manager)
-    init_skills()
+    
+    global _skill_system
+    _skill_system = SkillSystem()
+    service_container.register_service('skill_system', lambda: _skill_system)
+    service_container.register_service('skill_manager', lambda: _skill_system.manager)
+    service_container.register_service('skill_selector', lambda: _skill_system.selector)
     
     from app.program.services.chat.chat_service import ChatService
     from app.program.services.model.model_service import ModelService
@@ -76,6 +82,15 @@ def register_services():
     service_container.register_service('context_engine', ContextEngine)
     service_container.register_service('channel_engine', ChannelEngine)
 
+async def _skill_lifespan(app):
+    """Skill系统生命周期管理"""
+    global _skill_system
+    if _skill_system:
+        await _skill_system.start()
+    yield
+    if _skill_system:
+        await _skill_system.stop()
+
 def create_app(lifespan=None):
     """创建FastAPI应用实例"""
     from fastapi import FastAPI
@@ -90,7 +105,7 @@ def create_app(lifespan=None):
         version="1.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
-        lifespan=lifespan
+        lifespan=lifespan or _skill_lifespan
     )
     
     app.add_middleware(

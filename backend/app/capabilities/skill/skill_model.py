@@ -96,14 +96,10 @@ class Skill(SkillABC):
     def get_level2_instructions(self) -> str:
         """Level 2：按需从文件系统读取完整指令内容"""
         md_path = os.path.join(self.path, 'SKILL.md')
-        try:
-            with open(md_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            _, body = self._parse_frontmatter(content)
-            return body.strip()
-        except Exception as e:
-            logger.warning(f"[Skill] 读取指令失败 {md_path}: {e}")
-            return ''
+        with open(md_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        _, body = self._parse_frontmatter(content)
+        return body.strip()
 
     def get_usage_examples(self) -> List[str]:
         return self.metadata.get('usage_examples', [])
@@ -115,11 +111,8 @@ class Skill(SkillABC):
             for fname in os.listdir(ref_dir):
                 if fname.endswith('.md'):
                     fpath = os.path.join(ref_dir, fname)
-                    try:
-                        with open(fpath, 'r', encoding='utf-8') as f:
-                            refs[fname] = f.read()
-                    except Exception as e:
-                        logger.warning(f"[Skill] 读取参考文档失败 {fpath}: {e}")
+                    with open(fpath, 'r', encoding='utf-8') as f:
+                        refs[fname] = f.read()
         return refs
 
     def list_scripts(self) -> List[str]:
@@ -186,11 +179,7 @@ class Skill(SkillABC):
 
         frontmatter = parts[1].strip()
         body = parts[2].strip()
-        try:
-            metadata = yaml.safe_load(frontmatter) or {}
-        except yaml.YAMLError as e:
-            logger.warning(f"解析 YAML 失败: {e}")
-            metadata = {}
+        metadata = yaml.safe_load(frontmatter) or {}
 
         return metadata, body
 
